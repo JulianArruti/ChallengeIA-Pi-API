@@ -22,7 +22,7 @@ collection = chroma_client.get_or_create_collection(
 co = cohere.Client("G6m6NXL8hYwNWUiXvtMYxfch6BgQk2RpXvg4uTXS")
 
 # Function to split document content into chunks with embeddings
-def process_document(document_path):
+def process_document(document_path): 
     # Read document content
     with open(document_path, "r", encoding="utf-8") as file: ###
         document_content = file.read()  ###
@@ -46,9 +46,6 @@ def process_document(document_path):
 
     return document_ids  # Return IDs for future doc reference
 
-#Testing process_document(document_path)
-print(process_document(DOC_PATH))
-
 @app.get("/")
 async def root():
     try:
@@ -57,3 +54,28 @@ async def root():
     except Exception as e:
         print(f"Error initializing Cohere client: {e}")
     return {"message": "Hello, world!"}
+
+#prueba de la funcion aislada de obtener el documento, funciono correctamente y se obtuvo el documento correcto.
+@app.get("/question/{question:str}")
+async def get_context(question: str = "The question to get context for"):
+    """Retrieves context for a given question using Cohere and ChromaDB."""
+    ids = process_document(DOC_PATH)
+    question_embedding = co.embed(
+        texts=[question], model="embed-multilingual-v3.0", input_type="classification"
+    ).embeddings[0]
+
+    context = collection.query(query_embeddings=[question_embedding], n_results=1)["documents"][0]
+    return {"context": context}  # Assuming content is stored in "page_content" key
+
+##no funciono
+#@app.post("/ask")
+#async def ask(request: Request):
+#    # Use await to get the actual JSON data
+#    data = await request.json()
+
+#    user_name = request.json()["user_name"]
+#    question = request.json()["question"]
+
+    # Get context based on question
+#    context = get_context(question)
+#    return {"user_name": user_name, "question": question, "context": context}
