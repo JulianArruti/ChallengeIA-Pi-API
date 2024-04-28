@@ -49,46 +49,32 @@ def process_document(document_path):
 
     return document_ids  # Return IDs for future doc reference
 
-def get_emojic(sentiment):
-    # Diccionario que mapea los sentimientos a sus respectivos emojis
-    sentiment_emojis = {
-        "Alegría": "😀",
-        "Dilema": "😧",
-        "Asombro": "😲",
-        "Esperanza": "🙌",
-        "Admiracion": "😯"
-    }
-    # Devuelve el emoji correspondiente al sentimiento
-    return sentiment_emojis.get(sentiment, "")
 
 
-@app.get("/")
-async def root():
-    return {"message": "Hello, world!"}
-
-#prueba de la funcion aislada de obtener el documento, funciono correctamente y se obtuvo el documento correcto.
-@app.get("/question/{question:str}")
-async def get_context(question: str = "The question to get context for"):
-    """Retrieves context for a given question using Cohere and ChromaDB."""
-
-    ids = process_document(DOC_PATH) #posible uso de los ids para referencia
-
-    #Realizando embedding de la pregunta
+def get_answer(question):
+   #Realizando embedding de la pregunta
     question_embedding = co.embed(
         texts=[question], model="embed-multilingual-v3.0", input_type="classification"
     ).embeddings[0]
 
-    #Obtencion del documento mas cercano para responder a la pregunta
-    context = collection.query(query_embeddings=[question_embedding], n_results=1)["documents"][0]
+    #Obtencion de los documentos mas cercano para responder a la pregunta
+    context = collection.query(query_embeddings=[question_embedding], n_results=2)["documents"][0]
     
-    #Modificando formato para que el modelo pueda tomarlo correctamente
-    document = [{"snippet": context[0]}]
-    
+    #Permitiendo que tome varios documentos para contexto
+    document = []
+    for doc in context:
+        document.append({"snippet": doc})
+
     #Obteniendo la respuesta del MML
     answer = co.chat(
         message=question,
         documents=document).text
     
+    return answer
+
+
+
+def get_emojic(answer):
     #Parte de la deteccion del resumen del mensaje, despues de las pruebas se limpiara para legibilidad
     examples = [
     ClassifyExample(text="Ficción Espacial: En la lejana galaxia de Zenthoria, dos civilizaciones alienígenas, los Dracorians y los Lumis, se encuentran al borde de la guerra intergaláctica", label="Asombro"),
@@ -118,20 +104,37 @@ async def get_context(question: str = "The question to get context for"):
     
     for classification in sentiment.classifications:
         sentiment = (classification.prediction)
+ 
+    sentiment_emojis = {
+        "Alegría": "😀",
+        "Dilema": "😧",
+        "Asombro": "😲",
+        "Esperanza": "🙌",
+        "Admiracion": "😯"
+    }
+    # Devuelve el emoji correspondiente al sentimiento
+    emojic = sentiment_emojis.get(sentiment, "")
+    return emojic
 
-    emojic = get_emojic(sentiment)
+ids = process_document(DOC_PATH)
+
+@app.post("/question/{question:str}")
+async def final_answer(question: str = "¿Que deseas preguntar?"):
+    answer = get_answer(question)
+
+    emojic = get_emojic(answer)
 
     #Respuesta con emojis
-    formatted_response = f"{answer} {emojic}" 
-    return {"question": question, "context": context, "answer": formatted_response} 
+    finals_answer = f"{answer} {emojic}" 
+    return {"question": question, "answer": finals_answer} 
+
 
 #respuesta correcta, chequeada tambien con zara y otras preguntas: 
 """
+	
+Response body
 {
-  "question": "quien es alex?",
-  "context": [
-    ". Un joven ingeniero, Alex, se ve inmerso en una conspiración global cuando descubre que las supercomputadoras han desarrollado emociones"
-  ],
-  "answer": "Alex es un joven ingeniero que se ve envuelto en una conspiración global cuando descubre que las supercomputadoras han desarrollado emociones. 😲"
+  "question": "What is the name of the magical flower?",
+  "answer": "The name of the magical flower is \"Luz de Luna\". "
 }
 """
