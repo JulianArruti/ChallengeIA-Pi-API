@@ -113,18 +113,3 @@ async def final_answer(username: str, question: str = "¿Que deseas preguntar?")
     #Respuesta con emojis
     finals_answer = f"{answer} {emojic}" 
     return {"username": username, "question": question, "answer": finals_answer} 
-
-
-#respuesta correcta, chequeada tambien con zara y otras preguntas: 
-"""	
-Response body
-{
-  "question": "What is the name of the magical flower?",
-  "answer": "The name of the magical flower is \"Luz de Luna\". "
-}
-
-{
-  "question": "What did Emma decide to do?\"",
-  "answer": "Emma decided to share her gift with the town, leaving an indelible mark on the heart of each inhabitant. 😀"
-}  
-"""
